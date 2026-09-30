@@ -5,8 +5,8 @@ pipeline {
         JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
 
-        AWS_ACCOUNT_ID = '433985779049'
-        AWS_REGION     = 'ap-southeast-2'
+        AWS_ACCOUNT_ID = '072672872821'
+        AWS_REGION     = 'ap-south-1'
         ECR_REGISTRY   = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
         IMAGE_TAG      = "build-${env.BUILD_NUMBER}"
     }
@@ -15,7 +15,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/muthunsuman/DevOps-end-to-end-project.git'
+                url: 'https://github.com/vijayammanagi1234/DevOps-3tier-app.git'
             }
         }
 
