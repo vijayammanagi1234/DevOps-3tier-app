@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/muthunsuman/DevOps-end-to-end-project.git
+    repoURL: https://github.com/vijayammanagi1234/DevOps-3tier-app.git
     targetRevision: main
     path: manifests
   destination:
