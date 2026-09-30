@@ -44,7 +44,7 @@ pipeline {
             }
         }
 
-        stage('Push to ECR') {
+        stage('Push to aws ECR') {
             steps {
                 sh '''
                     export AWS_EC2_METADATA_DISABLED=true
