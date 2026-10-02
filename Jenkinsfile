@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        githubPush()
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -75,7 +79,7 @@ pipeline {
                         git pull origin main
                         
                         sed -i 's|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/backend-app:.*|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/backend-app:build-${BUILD_NUMBER}|g' kubernetes/dev/backend.yaml
-                        sed -i 's|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/frontend-app:.*|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/frontend-app:build-${BUILD_NUMBER}|g' kubernetes/dev/fronttend.yaml
+                        sed -i 's|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/frontend-app:.*|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/frontend-app:build-${BUILD_NUMBER}|g' kubernetes/dev/frontend.yaml
                         
                         git add kubernetes/dev/backend.yaml kubernetes/dev/fronttend.yaml
                         git commit -m "CI: Update image tags to ${IMAGE_TAG}"
