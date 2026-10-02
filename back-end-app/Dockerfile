@@ -8,7 +8,7 @@ COPY src ./src
 
 RUN mvn clean package -DskipTests
 
-# Runtime build final stage
+# Runtime build final stage of back-end
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
