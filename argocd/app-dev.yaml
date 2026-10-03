@@ -3,18 +3,23 @@ kind: Application
 metadata:
   name: ecommerce-dev
   namespace: argocd
+
 spec:
   project: default
+
   source:
     repoURL: https://github.com/vijayammanagi1234/DevOps-3tier-app.git
     targetRevision: main
     path: manifests
+
   destination:
     server: https://kubernetes.default.svc
     namespace: ecommerce-dev
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+
     syncOptions:
       - CreateNamespace=true
