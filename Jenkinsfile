@@ -1,6 +1,16 @@
 pipeline {
     agent any
 
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+
+        AWS_ACCOUNT_ID = '072672872821'
+        AWS_REGION     = 'ap-southeast-2'
+        ECR_REGISTRY   = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
+        IMAGE_TAG      = "build-${env.BUILD_NUMBER}"
+    }
+
     triggers {
         githubPush()
     }
