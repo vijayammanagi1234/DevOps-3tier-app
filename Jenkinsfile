@@ -6,9 +6,14 @@ pipeline {
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
 
         AWS_ACCOUNT_ID = '072672872821'
-        AWS_REGION     = 'ap-southeast-2'
-        ECR_REGISTRY   = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
-        IMAGE_TAG      = "build-${env.BUILD_NUMBER}"
+        AWS_REGION     = 'ap-south-1'
+
+        ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+        BACKEND_ECR    = "${ECR_REGISTRY}/back-end-ecr"
+        FRONTEND_ECR   = "${ECR_REGISTRY}/front-end-ecr"
+
+        IMAGE_TAG      = "build-${BUILD_NUMBER}"
     }
 
     triggers {
@@ -16,19 +21,42 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/vijayammanagi1234/DevOps-3tier-app.git'
+                    url: 'https://github.com/vijayammanagi1234/DevOps-3tier-app.git'
             }
         }
 
         stage('Java Check') {
             steps {
                 sh '''
+                    set -e
+
+                    echo "===== JAVA ====="
                     echo "JAVA_HOME=$JAVA_HOME"
                     java -version
+
+                    echo "===== MAVEN ====="
                     mvn -version
+
+                    echo "===== AWS CLI ====="
+                    aws --version
+                '''
+            }
+        }
+
+        stage('AWS Identity Check') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "===== AWS REGION ====="
+                    echo "$AWS_REGION"
+
+                    echo "===== AWS ACCOUNT ====="
+                    aws sts get-caller-identity
                 '''
             }
         }
@@ -36,64 +64,153 @@ pipeline {
         stage('Build Backend') {
             steps {
                 dir('back-end-app') {
-                    sh 'mvn clean package -DskipTests'
+                    sh '''
+                        set -e
+                        mvn clean package -DskipTests
+                    '''
                 }
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker build -t backend-app ./back-end-app'
-                sh 'docker build -t frontend-app ./front-end-app'
+                sh '''
+                    set -e
+
+                    docker build -t backend-app ./back-end-app
+                    docker build -t frontend-app ./front-end-app
+
+                    echo "===== DOCKER IMAGES ====="
+                    docker images | grep -E 'backend-app|frontend-app' || true
+                '''
             }
         }
 
-        stage('Push to aws ECR') {
+        stage('Push to AWS ECR') {
             steps {
                 sh '''
-                    export AWS_EC2_METADATA_DISABLED=true
-                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                    docker tag backend-app ${ECR_REGISTRY}/backend-app:latest
-                    docker tag backend-app ${ECR_REGISTRY}/backend-app:${IMAGE_TAG}
-                    docker push ${ECR_REGISTRY}/backend-app:latest
-                    docker push ${ECR_REGISTRY}/backend-app:${IMAGE_TAG}
-                    docker tag frontend-app ${ECR_REGISTRY}/frontend-app:latest
-                    docker tag frontend-app ${ECR_REGISTRY}/frontend-app:${IMAGE_TAG}
-                    docker push ${ECR_REGISTRY}/frontend-app:latest
-                    docker push ${ECR_REGISTRY}/frontend-app:${IMAGE_TAG}
+                    set -e
+
+                    echo "===== AWS ACCOUNT ====="
+                    aws sts get-caller-identity
+
+                    echo "===== ECR LOGIN ====="
+
+                    aws ecr get-login-password \
+                        --region "$AWS_REGION" | \
+                    docker login \
+                        --username AWS \
+                        --password-stdin "$ECR_REGISTRY"
+
+                    echo "===== BACKEND TAG ====="
+
+                    docker tag backend-app \
+                        "$BACKEND_ECR:latest"
+
+                    docker tag backend-app \
+                        "$BACKEND_ECR:$IMAGE_TAG"
+
+                    echo "===== BACKEND PUSH ====="
+
+                    docker push "$BACKEND_ECR:latest"
+                    docker push "$BACKEND_ECR:$IMAGE_TAG"
+
+                    echo "===== FRONTEND TAG ====="
+
+                    docker tag frontend-app \
+                        "$FRONTEND_ECR:latest"
+
+                    docker tag frontend-app \
+                        "$FRONTEND_ECR:$IMAGE_TAG"
+
+                    echo "===== FRONTEND PUSH ====="
+
+                    docker push "$FRONTEND_ECR:latest"
+                    docker push "$FRONTEND_ECR:$IMAGE_TAG"
+
+                    echo "===== ECR PUSH SUCCESS ====="
                 '''
             }
         }
 
         stage('Deploy Containers') {
             steps {
-                sh 'docker compose down || true'
-                sh 'docker compose up -d --build'
+                sh '''
+                    set -e
+
+                    docker compose down || true
+                    docker compose up -d --build
+
+                    echo "===== CONTAINERS ====="
+                    docker compose ps
+                '''
             }
         }
-        
+
         stage('Cleanup Local Images') {
             steps {
-                sh 'docker image prune -f || true'
+                sh '''
+                    docker image prune -f || true
+                '''
             }
         }
 
         stage('Update GitOps Manifests') {
             steps {
-                withCredentials([string(credentialsId: 'github-token-creds', variable: 'GITHUB_TOKEN')]) {
+                withCredentials([
+                    string(
+                        credentialsId: 'github-token-creds',
+                        variable: 'GITHUB_TOKEN'
+                    )
+                ]) {
+
                     sh '''
-                        git config --global user.email "jenkins@devops.com"
-                        git config --global user.name "Jenkins CI"
-                        
-                        git remote set-url origin https://muthunsuman:${GITHUB_TOKEN}@github.com/muthunsuman/DevOps-end-to-end-project.git
+                        set -e
+
+                        echo "===== GIT CONFIG ====="
+
+                        git config user.email "jenkins@devops.com"
+                        git config user.name "Jenkins CI"
+
+                        echo "===== GITOPS REPOSITORY ====="
+
+                        git remote set-url origin \
+                        "https://muthunsuman:${GITHUB_TOKEN}@github.com/muthunsuman/DevOps-end-to-end-project.git"
+
                         git pull origin main
-                        
-                        sed -i 's|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/backend-app:.*|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/backend-app:build-${BUILD_NUMBER}|g' kubernetes/dev/backend.yaml
-                        sed -i 's|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/frontend-app:.*|image: 433985779049.dkr.ecr.ap-southeast-2.amazonaws.com/frontend-app:build-${BUILD_NUMBER}|g' kubernetes/dev/frontend.yaml
-                        
-                        git add kubernetes/dev/backend.yaml kubernetes/dev/fronttend.yaml
-                        git commit -m "CI: Update image tags to ${IMAGE_TAG}"
+
+                        echo "===== UPDATE BACKEND IMAGE ====="
+
+                        sed -i \
+                        "s|image: .*back-end-ecr:.*|image: ${BACKEND_ECR}:${IMAGE_TAG}|g" \
+                        kubernetes/dev/backend.yaml
+
+                        echo "===== UPDATE FRONTEND IMAGE ====="
+
+                        sed -i \
+                        "s|image: .*front-end-ecr:.*|image: ${FRONTEND_ECR}:${IMAGE_TAG}|g" \
+                        kubernetes/dev/frontend.yaml
+
+                        echo "===== VERIFY MANIFESTS ====="
+
+                        grep -n "image:" kubernetes/dev/backend.yaml
+                        grep -n "image:" kubernetes/dev/frontend.yaml
+
+                        echo "===== GIT COMMIT ====="
+
+                        git add \
+                            kubernetes/dev/backend.yaml \
+                            kubernetes/dev/frontend.yaml
+
+                        git commit \
+                            -m "CI: Update image tags to ${IMAGE_TAG}" \
+                            || echo "No changes to commit"
+
+                        echo "===== GIT PUSH ====="
+
                         git push origin main
+
+                        echo "===== GITOPS UPDATE SUCCESS ====="
                     '''
                 }
             }
@@ -104,6 +221,7 @@ pipeline {
         success {
             echo "Pipeline Build #${env.BUILD_NUMBER} - Deployment Successful!"
         }
+
         failure {
             echo "Pipeline Build #${env.BUILD_NUMBER} - Deployment Failed!"
         }
