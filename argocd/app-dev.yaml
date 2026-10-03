@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/vijayammanagi1234/DevOps-3tier-app.git
     targetRevision: main
-    path: manifests
+    path: kubernetes/dev
 
   destination:
     server: https://kubernetes.default.svc

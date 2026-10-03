@@ -1,0 +1,27 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: ecommerce-dev
+  region: ap-south-1
+
+managedNodeGroups:
+
+  - name: ecommerce-ng
+    instanceType: t3.medium
+
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 3
+
+    volumeSize: 30
+    volumeType: gp3
+
+    labels:
+      environment: dev
+      workload: ecommerce
+
+    tags:
+      Environment: dev
+      Project: ecommerce
+      ManagedBy: eksctl

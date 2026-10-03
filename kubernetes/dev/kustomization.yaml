@@ -1,5 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
 resources:
   - namespace.yaml
   - secret.yaml
@@ -8,7 +9,7 @@ resources:
   - postgres.yaml
   - backend.yaml
   - back-end-app-service.yaml
-  - frontend.yaml
+  - fronttend.yaml
   - ingress.yaml
   - hpa.yaml
   - networkpolicy.yaml
